@@ -272,3 +272,18 @@ AUTOUPDATE_EOF
     ok "Cron job set: daily at 4:30 AM"
     SUMMARY_AUTOUPDATE="installed"
 fi
+
+# ── Summary ─────────────────────────────────────
+printf "\n${BOLD}=== Setup Complete ===${NC}\n\n"
+printf "  Architecture:   %s\n" "$DETECTED_ARCH"
+printf "  AWG-Manager:    %s\n" "$SUMMARY_AWG"
+printf "  HydraRoute:     %s\n" "$SUMMARY_HYDRA"
+printf "  Auto-update:    %s\n" "$SUMMARY_AUTOUPDATE"
+printf "\n"
+
+[ "$SUMMARY_AWG" = "FAILED" ] || [ "$SUMMARY_HYDRA" = "FAILED" ] && {
+    warn "Some components failed to install. Check output above."
+    exit 1
+}
+
+ok "All done!"
