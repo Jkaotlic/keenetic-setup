@@ -43,3 +43,37 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+
+# ── PATH fix ────────────────────────────────────
+export PATH=/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# ── Entware check ──────────────────────────────
+if [ ! -x /opt/bin/opkg ]; then
+    err "Entware not found (/opt/bin/opkg missing)"
+    err "Install Entware first via Keenetic web UI"
+    exit 1
+fi
+ok "Entware found"
+
+# ── Arch detection ──────────────────────────────
+DETECTED_ARCH=$(opkg print-architecture 2>/dev/null | sort -k3 -nr | awk '$2 != "all" {print $2; exit}')
+
+case "$DETECTED_ARCH" in
+    aarch64*)
+        AWG_REPO="http://repo.hoaxisr.ru/aarch64-k3.10"
+        HYDRA_REPO="https://ground-zerro.github.io/release/keenetic/aarch64-k3.10"
+        ;;
+    mipsel*)
+        AWG_REPO="http://repo.hoaxisr.ru/mipsel-k3.4"
+        HYDRA_REPO="https://ground-zerro.github.io/release/keenetic/mipsel-k3.4"
+        ;;
+    mips*)
+        AWG_REPO="http://repo.hoaxisr.ru/mips-k3.4"
+        HYDRA_REPO="https://ground-zerro.github.io/release/keenetic/mips-k3.4"
+        ;;
+    *)
+        err "Unknown architecture: $DETECTED_ARCH"
+        exit 1
+        ;;
+esac
+ok "Architecture: $DETECTED_ARCH"
