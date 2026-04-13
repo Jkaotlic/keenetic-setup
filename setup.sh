@@ -200,3 +200,75 @@ if [ "$INSTALL_HYDRA" = "1" ]; then
         SUMMARY_HYDRA="FAILED"
     fi
 fi
+
+# ── Auto-update ─────────────────────────────────
+SUMMARY_AUTOUPDATE="skipped"
+
+if [ "$INSTALL_AUTOUPDATE" = "1" ]; then
+    info "Deploying auto-update script..."
+
+    cat > /opt/bin/entware-autoupdate << 'AUTOUPDATE_EOF'
+#!/bin/sh
+# Entware auto-update script
+export PATH=/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+LOG=/opt/var/log/autoupdate.log
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "===== Update started: $DATE =====" >> $LOG
+
+echo "[*] Updating package lists..." >> $LOG
+opkg update >> $LOG 2>&1
+
+UPGRADABLE=$(opkg list-upgradable 2>/dev/null | grep ' - .* - ' | grep -v 'has no valid architecture')
+
+if [ -z "$UPGRADABLE" ]; then
+    echo "[*] All packages are up to date" >> $LOG
+    echo "===== Update finished: $(date '+%Y-%m-%d %H:%M:%S') =====" >> $LOG
+    echo "" >> $LOG
+    exit 0
+fi
+
+echo "[*] Upgradable packages:" >> $LOG
+echo "$UPGRADABLE" >> $LOG
+
+echo "[*] Upgrading..." >> $LOG
+echo "$UPGRADABLE" | awk '{print $1}' | while read pkg; do
+    echo "  -> Upgrading $pkg" >> $LOG
+    opkg upgrade "$pkg" >> $LOG 2>&1
+done
+
+echo "[*] Upgrade complete" >> $LOG
+echo "===== Update finished: $(date '+%Y-%m-%d %H:%M:%S') =====" >> $LOG
+echo "" >> $LOG
+
+LOG_SIZE=$(wc -c < $LOG 2>/dev/null || echo 0)
+if [ "$LOG_SIZE" -gt 102400 ]; then
+    tail -200 $LOG > $LOG.tmp
+    mv $LOG.tmp $LOG
+fi
+AUTOUPDATE_EOF
+
+    chmod +x /opt/bin/entware-autoupdate
+    ok "Auto-update script deployed to /opt/bin/entware-autoupdate"
+
+    # Install cron if missing
+    if ! opkg list-installed | grep -q "^cron "; then
+        info "Installing cron..."
+        opkg install cron 2>&1 | grep -v 'has no valid architecture'
+    fi
+
+    # Start cron if not running
+    if [ -x /opt/etc/init.d/S10cron ]; then
+        /opt/etc/init.d/S10cron status > /dev/null 2>&1 || /opt/etc/init.d/S10cron start > /dev/null 2>&1
+    fi
+
+    # Add crontab entry (preserve existing entries)
+    EXISTING_CRON=$(crontab -l 2>/dev/null | grep -v 'entware-autoupdate' || true)
+    {
+        [ -n "$EXISTING_CRON" ] && echo "$EXISTING_CRON"
+        echo "30 4 * * * /opt/bin/entware-autoupdate"
+    } | crontab -
+
+    ok "Cron job set: daily at 4:30 AM"
+    SUMMARY_AUTOUPDATE="installed"
+fi
