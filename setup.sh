@@ -139,3 +139,32 @@ if [ "$INTERACTIVE" = "1" ]; then
 
     printf "\n"
 fi
+
+# ── AWG-Manager ─────────────────────────────────
+SUMMARY_AWG="skipped"
+
+if [ "$INSTALL_AWG" = "1" ]; then
+    info "Configuring AWG-Manager repo..."
+    echo "src/gz hoaxisr $AWG_REPO" > /opt/etc/opkg/awg_manager.conf
+    ok "AWG repo: $AWG_REPO"
+
+    info "Updating package lists..."
+    opkg update 2>&1 | grep -v 'has no valid architecture' > /dev/null
+
+    if opkg list-installed | grep -q "^awg-manager "; then
+        info "AWG-Manager already installed, upgrading..."
+        opkg upgrade awg-manager 2>&1 | grep -v 'has no valid architecture'
+    else
+        info "Installing AWG-Manager..."
+        opkg install awg-manager 2>&1 | grep -v 'has no valid architecture'
+    fi
+
+    if opkg list-installed | grep -q "^awg-manager "; then
+        AWG_VER=$(opkg list-installed | grep "^awg-manager " | awk '{print $3}')
+        ok "AWG-Manager $AWG_VER installed"
+        SUMMARY_AWG="installed ($AWG_VER)"
+    else
+        err "AWG-Manager installation failed"
+        SUMMARY_AWG="FAILED"
+    fi
+fi
