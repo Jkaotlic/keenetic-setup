@@ -108,3 +108,34 @@ for dep in ca-certificates wget-ssl curl; do
         fi
     fi
 done
+
+# ── Interactive prompts ─────────────────────────
+ask() {
+    # ask "prompt" "default" → sets REPLY to y or n
+    # default: y = [Y/n], n = [y/N]
+    _prompt="$1"
+    _default="$2"
+    if [ "$_default" = "y" ]; then
+        printf "${BOLD}%s [Y/n]:${NC} " "$_prompt"
+    else
+        printf "${BOLD}%s [y/N]:${NC} " "$_prompt"
+    fi
+    read REPLY
+    REPLY=$(echo "$REPLY" | tr '[:upper:]' '[:lower:]')
+    [ -z "$REPLY" ] && REPLY="$_default"
+}
+
+if [ "$INTERACTIVE" = "1" ]; then
+    printf "\n${BOLD}=== Keenetic Setup ===${NC}\n\n"
+
+    ask "Install AWG-Manager?" "y"
+    [ "$REPLY" = "y" ] && INSTALL_AWG=1
+
+    ask "Install HydraRoute (Neo + Web)?" "n"
+    [ "$REPLY" = "y" ] && INSTALL_HYDRA=1
+
+    ask "Setup auto-update (cron, daily 4:30)?" "y"
+    [ "$REPLY" = "y" ] && INSTALL_AUTOUPDATE=1
+
+    printf "\n"
+fi
