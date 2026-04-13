@@ -77,3 +77,34 @@ case "$DETECTED_ARCH" in
         ;;
 esac
 ok "Architecture: $DETECTED_ARCH"
+
+# ── Update Entware ──────────────────────────────
+info "Updating package lists..."
+opkg update 2>&1 | grep -v 'has no valid architecture'
+ok "Package lists updated"
+
+info "Upgrading installed packages..."
+UPGRADABLE=$(opkg list-upgradable 2>/dev/null | grep ' - .* - ' | grep -v 'has no valid architecture')
+if [ -z "$UPGRADABLE" ]; then
+    ok "All packages up to date"
+else
+    echo "$UPGRADABLE" | awk '{print $1}' | while read pkg; do
+        info "  Upgrading $pkg..."
+        opkg upgrade "$pkg" 2>&1 | grep -v 'has no valid architecture'
+    done
+    ok "Packages upgraded"
+fi
+
+# ── Base dependencies ───────────────────────────
+for dep in ca-certificates wget-ssl curl; do
+    if opkg list-installed | grep -q "^${dep} "; then
+        ok "$dep already installed"
+    else
+        info "Installing $dep..."
+        if opkg install "$dep" 2>&1 | grep -v 'has no valid architecture'; then
+            ok "$dep installed"
+        else
+            warn "Failed to install $dep (non-critical, continuing)"
+        fi
+    fi
+done
