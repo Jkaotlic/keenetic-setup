@@ -122,6 +122,17 @@ ping -c 3 bin.entware.net
 
 This project is provided as-is for personal home network use. Use at your own risk. Always review scripts before running them on your hardware. Not responsible for misconfigured devices.
 
+## Acknowledgements
+
+This project is a setup wrapper around excellent tools built by their respective authors:
+
+- **[Entware](https://github.com/Entware/Entware)** — package manager for embedded Linux devices (2500+ packages). The foundation that makes everything else possible.
+- **[AWG-Manager](https://github.com/hoaxisr/awg-manager)** by [@hoaxisr](https://github.com/hoaxisr) — AmneziaWG tunnel manager with web interface for Keenetic routers
+- **[HydraRoute](https://github.com/Ground-Zerro/HydraRoute)** by [@Ground-Zerro](https://github.com/Ground-Zerro) — policy-based traffic routing with web UI for Keenetic
+- **[AmneziaWG](https://github.com/amnezia-vpn/amneziawg-go)** by [Amnezia VPN](https://github.com/amnezia-vpn) — high-performance WireGuard-based VPN protocol
+
+Thanks to all the developers and contributors who make the Keenetic ecosystem great.
+
 ## License
 
 MIT
