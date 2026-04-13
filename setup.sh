@@ -80,15 +80,18 @@ ok "Architecture: $DETECTED_ARCH"
 
 # ── Update Entware ──────────────────────────────
 info "Updating package lists..."
-opkg update 2>&1 | grep -v 'has no valid architecture'
-ok "Package lists updated"
+if opkg update 2>&1 | grep -v 'has no valid architecture'; then
+    ok "Package lists updated"
+else
+    warn "opkg update may have failed (check network connectivity)"
+fi
 
 info "Upgrading installed packages..."
 UPGRADABLE=$(opkg list-upgradable 2>/dev/null | grep ' - .* - ' | grep -v 'has no valid architecture')
 if [ -z "$UPGRADABLE" ]; then
     ok "All packages up to date"
 else
-    echo "$UPGRADABLE" | awk '{print $1}' | while read pkg; do
+    echo "$UPGRADABLE" | awk '{print $1}' | while read -r pkg; do
         info "  Upgrading $pkg..."
         opkg upgrade "$pkg" 2>&1 | grep -v 'has no valid architecture'
     done
@@ -101,7 +104,10 @@ for dep in ca-certificates wget-ssl curl; do
         ok "$dep already installed"
     else
         info "Installing $dep..."
-        if opkg install "$dep" 2>&1 | grep -v 'has no valid architecture'; then
+        OUTPUT=$(opkg install "$dep" 2>&1)
+        RC=$?
+        echo "$OUTPUT" | grep -v 'has no valid architecture'
+        if [ $RC -eq 0 ]; then
             ok "$dep installed"
         else
             warn "Failed to install $dep (non-critical, continuing)"
@@ -120,7 +126,7 @@ ask() {
     else
         printf "${BOLD}%s [y/N]:${NC} " "$_prompt"
     fi
-    read REPLY
+    read -r REPLY
     REPLY=$(echo "$REPLY" | tr '[:upper:]' '[:lower:]')
     [ -z "$REPLY" ] && REPLY="$_default"
 }
@@ -174,7 +180,7 @@ SUMMARY_HYDRA="skipped"
 
 if [ "$INSTALL_HYDRA" = "1" ]; then
     info "Configuring HydraRoute repo..."
-    echo "src/gz ground-zerro $HYDRA_REPO" > /opt/etc/opkg/customfeeds.conf
+    echo "src/gz ground-zerro $HYDRA_REPO" > /opt/etc/opkg/hydraroute.conf
     ok "HydraRoute repo: $HYDRA_REPO"
 
     info "Updating package lists..."
@@ -211,6 +217,7 @@ if [ "$INSTALL_AUTOUPDATE" = "1" ]; then
 #!/bin/sh
 # Entware auto-update script
 export PATH=/opt/bin:/opt/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+mkdir -p /opt/var/log
 LOG=/opt/var/log/autoupdate.log
 DATE=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -232,7 +239,7 @@ echo "[*] Upgradable packages:" >> $LOG
 echo "$UPGRADABLE" >> $LOG
 
 echo "[*] Upgrading..." >> $LOG
-echo "$UPGRADABLE" | awk '{print $1}' | while read pkg; do
+echo "$UPGRADABLE" | awk '{print $1}' | while read -r pkg; do
     echo "  -> Upgrading $pkg" >> $LOG
     opkg upgrade "$pkg" >> $LOG 2>&1
 done
@@ -281,9 +288,9 @@ printf "  HydraRoute:     %s\n" "$SUMMARY_HYDRA"
 printf "  Auto-update:    %s\n" "$SUMMARY_AUTOUPDATE"
 printf "\n"
 
-[ "$SUMMARY_AWG" = "FAILED" ] || [ "$SUMMARY_HYDRA" = "FAILED" ] && {
+if [ "$SUMMARY_AWG" = "FAILED" ] || [ "$SUMMARY_HYDRA" = "FAILED" ]; then
     warn "Some components failed to install. Check output above."
     exit 1
-}
+fi
 
 ok "All done!"
