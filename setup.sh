@@ -168,3 +168,35 @@ if [ "$INSTALL_AWG" = "1" ]; then
         SUMMARY_AWG="FAILED"
     fi
 fi
+
+# ── HydraRoute ──────────────────────────────────
+SUMMARY_HYDRA="skipped"
+
+if [ "$INSTALL_HYDRA" = "1" ]; then
+    info "Configuring HydraRoute repo..."
+    echo "src/gz ground-zerro $HYDRA_REPO" > /opt/etc/opkg/customfeeds.conf
+    ok "HydraRoute repo: $HYDRA_REPO"
+
+    info "Updating package lists..."
+    opkg update 2>&1 | grep -v 'has no valid architecture' > /dev/null
+
+    for pkg in hrneo hrweb; do
+        if opkg list-installed | grep -q "^${pkg} "; then
+            info "$pkg already installed, upgrading..."
+            opkg upgrade "$pkg" 2>&1 | grep -v 'has no valid architecture'
+        else
+            info "Installing $pkg..."
+            opkg install "$pkg" 2>&1 | grep -v 'has no valid architecture'
+        fi
+    done
+
+    if opkg list-installed | grep -q "^hrneo "; then
+        HRNEO_VER=$(opkg list-installed | grep "^hrneo " | awk '{print $3}')
+        HRWEB_VER=$(opkg list-installed | grep "^hrweb " | awk '{print $3}')
+        ok "HydraRoute Neo $HRNEO_VER + Web $HRWEB_VER installed"
+        SUMMARY_HYDRA="installed (neo $HRNEO_VER, web $HRWEB_VER)"
+    else
+        err "HydraRoute installation failed"
+        SUMMARY_HYDRA="FAILED"
+    fi
+fi
